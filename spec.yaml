@@ -1,0 +1,56 @@
+schemaVersion: "2"
+kind: sandbox
+name: vibe
+version: "0.1.0"
+displayName: Mistral Vibe
+description: Mistral Vibe CLI coding agent
+
+sandbox:
+  image: docker/sandbox-templates:shell-docker
+  entrypoint: ["vibe"]
+
+permissions:
+  network:
+    allow:
+      - "*.mistral.*"
+      - astral.sh
+      - releases.astral.sh
+      - github.com
+      - objects.githubusercontent.com
+      - pypi.org
+      - files.pythonhosted.org
+
+setup:
+  install:
+    - description: Install uv
+      user: "0"
+      command: >-
+        curl -LsSf https://astral.sh/uv/install.sh
+        | env UV_INSTALL_DIR=/usr/local/bin sh
+
+    - description: Install Mistral Vibe
+      user: "0"
+      command: >-
+        UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin
+        uv tool install mistral-vibe
+        && chmod -R a+rX /opt/uv-tools
+
+    - description: Declare GLM 5.3 model for Vibe
+      user: "0"
+      command: |
+        set -eu
+        U=agent
+        H=$(getent passwd "$U" | cut -d: -f6)
+        [ -n "$H" ] || { echo "user $U not found" >&2; exit 1; }
+        mkdir -p "$H/.vibe"
+        cat > "$H/.vibe/config.toml" <<'EOF'
+        active_model = "glm-5-3"
+
+        [[models]]
+        name = "zai-glm-5-3"
+        provider = "mistral"
+        alias = "glm-5-3"
+        thinking = "high"
+        supports_images = false
+        EOF
+        chown -R "$U": "$H/.vibe"
